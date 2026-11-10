@@ -10,6 +10,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.secureithelpdesk.data.HelpdeskTicket
 import com.example.secureithelpdesk.screens.AdminDashboardScreen
+import com.example.secureithelpdesk.screens.AssignedTicketsScreen
+import com.example.secureithelpdesk.screens.AvailableTicketsScreen
 import com.example.secureithelpdesk.screens.auth.LoginScreen
 import com.example.secureithelpdesk.screens.auth.RegisterScreen
 import com.example.secureithelpdesk.screens.CreateTicketScreen
@@ -23,16 +25,12 @@ import com.example.secureithelpdesk.viewmodel.TicketViewModel
 fun AppNavigation(
     ticketViewModel: TicketViewModel
 ) {
-
     val navController = rememberNavController()
-
     val authViewModel: AuthViewModel = viewModel()
-
     NavHost(
         navController = navController,
         startDestination = AppRoutes.LOGIN
     ) {
-
         composable(AppRoutes.LOGIN) {
             LoginScreen(
                 onLogin = { email, password ->
@@ -165,10 +163,28 @@ fun AppNavigation(
         }
 
         composable(AppRoutes.ADMIN_DASHBOARD) {
+            LaunchedEffect(Unit) {
+                ticketViewModel.refreshAllTickets { error ->
+                    // Error handling will be added later.
+                }
+            }
+            val allTickets by ticketViewModel
+                .getAllTickets()
+                .collectAsState(initial = emptyList())
             AdminDashboardScreen(
-                tickets = emptyList(),
+                tickets = allTickets,
                 onUpdateStatus = { ticketId, status, notes ->
-                    // Ticket status updates will be connected next.
+                    ticketViewModel.updateTicketStatus(
+                        ticketId = ticketId,
+                        status = status,
+                        resolutionNotes = notes,
+                        onSuccess = {
+                            // Room Flow updates the dashboard automatically.
+                        },
+                        onError = { error ->
+                            // We'll add error feedback later.
+                        }
+                    )
                 },
                 onLogout = {
                     authViewModel.logout()
@@ -198,6 +214,64 @@ fun AppNavigation(
                     }
                 }
             )
+        }
+
+        composable(AppRoutes.AVAILABLE_TICKETS) {
+            val technicianId = authViewModel.currentUser?.uid
+
+            LaunchedEffect(technicianId) {
+                if (technicianId != null) {
+                    ticketViewModel.refreshAllTickets()
+                }
+            }
+
+            if (technicianId != null) {
+                val availableTickets by ticketViewModel
+                    .getAvailableTickets()
+                    .collectAsState(initial = emptyList())
+
+                AvailableTicketsScreen(
+                    tickets = availableTickets,
+                    onAcceptTicket = { ticketId ->
+                        ticketViewModel.acceptTicket(
+                            ticketId = ticketId,
+                            technicianId = technicianId
+                        )
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+
+        composable(AppRoutes.ASSIGNED_TICKETS) {
+            val technicianId = authViewModel.currentUser?.uid
+
+            LaunchedEffect(technicianId) {
+                if (technicianId != null) {
+                    ticketViewModel.refreshAllTickets()
+                }
+            }
+            if (technicianId != null) {
+                val assignedTickets by ticketViewModel
+                    .getAssignedTickets(technicianId)
+                    .collectAsState(initial = emptyList())
+
+                AssignedTicketsScreen(
+                    tickets = assignedTickets,
+                    onUpdateStatus = { ticketId, status, notes ->
+                        ticketViewModel.updateTechnicianTicketStatus(
+                            ticketId = ticketId,
+                            status = status,
+                            resolutionNotes = notes
+                        )
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
     }
 }

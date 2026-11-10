@@ -1,7 +1,5 @@
 package com.example.secureithelpdesk.data
 
-
-
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -11,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TicketDao {
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTicket(ticket: HelpdeskTicket)
 
@@ -24,6 +21,22 @@ interface TicketDao {
     @Query("SELECT * FROM helpdesk_tickets ORDER BY createdAt DESC")
     fun getAllTickets(): Flow<List<HelpdeskTicket>>
 
+    @Query("""
+    SELECT * FROM helpdesk_tickets
+    WHERE assignedTechnicianId IS NULL
+    AND status = 'Open'
+    ORDER BY createdAt DESC
+""")
+    fun getAvailableTickets(): Flow<List<HelpdeskTicket>>
+
+    @Query("""
+    SELECT * FROM helpdesk_tickets
+    WHERE assignedTechnicianId = :technicianId
+    ORDER BY createdAt DESC
+""")
+    fun getAssignedTickets(
+        technicianId: String
+    ): Flow<List<HelpdeskTicket>>
     @Update
     suspend fun updateTicket(ticket: HelpdeskTicket)
 

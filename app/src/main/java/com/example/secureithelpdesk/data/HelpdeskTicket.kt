@@ -13,5 +13,11 @@ data class HelpdeskTicket(
     val category: String = "",
     val status: String = "Open",
     val resolutionNotes: String = "",
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+
+    // Technician assignment
+    val assignedTechnicianId: String? = null,
+    val assignedTechnicianName: String? = null,
+    val acceptedAt: Long? = null,
+    val completedAt: Long? = null
 )
